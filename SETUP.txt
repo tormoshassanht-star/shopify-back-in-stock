@@ -1,0 +1,149 @@
+====================================================================
+  SHOPIFY BACK-IN-STOCK NOTIFICATION SYSTEM — PROJECT SUMMARY
+====================================================================
+
+GITHUB REPO
+-----------
+https://github.com/tormoshassanht-star/shopify-back-in-stock
+
+WHAT WAS BUILT
+--------------
+A full-stack back-in-stock notification system for Shopify.
+Customers subscribe to out-of-stock products via WhatsApp or Email.
+When stock is restored via a Shopify webhook, they are notified automatically.
+
+Tech stack:
+  - Backend:   Node.js + Express
+  - Database:  SQLite (better-sqlite3) — auto-initializes on first run
+  - WhatsApp:  Whatflow API
+  - Email:     Nodemailer (SMTP)
+  - Widget:    Vanilla JS snippet for Shopify product pages
+
+File structure:
+  server.js                     Express entry point
+  db.js                         SQLite schema + connection
+  routes/subscribe.js           POST /subscribe
+  routes/webhooks.js            POST /webhooks/inventory (Shopify webhook)
+  routes/admin.js               GET /admin/subscribers + GET /admin/stats
+  services/whatsapp.js          Whatflow API integration
+  services/email.js             Nodemailer integration
+  services/notify.js            Orchestrator (calls whatsapp or email)
+  widget/notify-widget.js       Frontend JS snippet for Shopify
+  scripts/register-webhooks.js  One-time Shopify webhook registration
+  .env.example                  All required environment variables
+
+STATUS
+------
+- [x] All code written and committed to GitHub
+- [x] GitHub repo created: tormoshassanht-star/shopify-back-in-stock
+- [ ] Railway deployment — IN PROGRESS (see instructions below)
+- [ ] Environment variables set on Railway
+- [ ] Shopify webhook registered
+- [ ] Widget added to Shopify theme
+
+====================================================================
+  RAILWAY DEPLOYMENT — CONTINUE FROM HERE
+====================================================================
+
+The Railway CLI timed out due to a network issue, so use the web
+dashboard instead. The GitHub repo is already pushed and ready.
+
+STEP 1 — Create Railway project
+  - Go to https://railway.app
+  - Click "New Project"
+  - Choose "Deploy from GitHub repo"
+  - Authorize Railway to access GitHub if prompted
+  - Select: tormoshassanht-star/shopify-back-in-stock
+  - Railway auto-detects Node.js and runs: npm install + npm start
+
+STEP 2 — Add environment variables
+  In Railway: click your service → Variables tab → add each of these:
+
+  PORT                    = 3000
+  SHOPIFY_SHOP_DOMAIN     = your-store.myshopify.com
+  SHOPIFY_ADMIN_API_KEY   = shpat_xxxxxxxxxxxxxxxxxxxx   (Shopify Admin API access token)
+  SHOPIFY_WEBHOOK_SECRET  = xxxxxxxxxxxxxxxxxxxxxx       (from Shopify webhook settings)
+  WHATFLOW_API_KEY        = xxxxxxxxxxxxxxxxxxxx         (from Whatflow dashboard)
+  WHATFLOW_PHONE_ID       = xxxxxxxxxxxxxxxxxxxx         (from Whatflow dashboard)
+  SMTP_HOST               = smtp.gmail.com               (or your provider)
+  SMTP_PORT               = 587
+  SMTP_USER               = you@gmail.com
+  SMTP_PASS               = your_app_password            (Gmail: use App Password, not account password)
+  SMTP_FROM               = noreply@yourdomain.com
+  ADMIN_API_KEY           = any_strong_random_string     (protects /admin routes)
+  ALLOWED_ORIGINS         = https://your-store.myshopify.com
+  BASE_URL                = (fill in after Step 3)
+
+STEP 3 — Generate public domain
+  In Railway: Settings → Networking → Generate Domain
+  You get a free URL like: https://shopify-back-in-stock-production.up.railway.app
+  Copy it and set BASE_URL to that URL in your Variables.
+
+STEP 4 — Register Shopify webhook
+  Run this from your local machine (after filling in .env):
+
+    cd path\to\shopify-back-in-stock
+    npm install
+    node scripts/register-webhooks.js
+
+  This registers: inventory_levels/update → https://your-railway-url/webhooks/inventory
+
+STEP 5 — Add widget to Shopify
+  Open: widget/notify-widget.js
+  On line 7, set APP_URL to your Railway domain:
+    var APP_URL = 'https://shopify-back-in-stock-production.up.railway.app';
+
+  Then in Shopify Admin:
+    Online Store → Themes → Edit code → theme.liquid (or product.liquid)
+    Paste the entire contents of widget/notify-widget.js inside a <script> tag
+    Place it just before </body> or after the product form section.
+
+====================================================================
+  API ENDPOINTS REFERENCE
+====================================================================
+
+POST /subscribe
+  Body: { product_id, variant_id, product_title, variant_title,
+          product_handle, channel ("whatsapp"|"email"), contact,
+          store_domain }
+  Returns: { success: true, message: "You'll be notified when back in stock!" }
+  Duplicate: 409 { success: false, message: "You're already on the list!" }
+
+POST /webhooks/inventory
+  Called by Shopify when inventory changes.
+  Verifies HMAC using SHOPIFY_WEBHOOK_SECRET.
+  Triggers WhatsApp/email notifications if available > 0.
+
+GET /admin/subscribers
+  Header: x-admin-key: <ADMIN_API_KEY>
+  Query params: product_id, notified (0|1), channel, limit, offset
+  Returns: { stats, subscribers[], pagination }
+
+GET /admin/stats
+  Header: x-admin-key: <ADMIN_API_KEY>
+  Returns: { stats, top_products[] }
+
+GET /health
+  Returns: { status: "ok", ts: "..." }
+
+====================================================================
+  NOTES
+====================================================================
+
+- SQLite DB file (subscribers.db) is created automatically on first run.
+  On Railway, the DB lives in the container — it resets on redeploy.
+  For production persistence, consider switching to Railway's Postgres
+  addon or mounting a persistent volume.
+
+- The widget detects out-of-stock variants using ShopifyAnalytics.meta,
+  window.product globals, and DOM state of the Add-to-Cart button.
+  It also polls the URL every 600ms as a fallback for themes that
+  update ?variant= without firing custom events.
+
+- Gmail App Passwords: https://myaccount.google.com/apppasswords
+  (requires 2FA to be enabled on your Google account)
+
+- Whatflow API docs: https://whatflow.io/docs
+  Find WHATFLOW_API_KEY and WHATFLOW_PHONE_ID in your Whatflow dashboard.
+
+====================================================================
