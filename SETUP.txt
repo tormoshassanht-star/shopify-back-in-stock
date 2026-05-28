@@ -63,8 +63,6 @@ STEP 2 — Add environment variables
   SHOPIFY_SHOP_DOMAIN     = your-store.myshopify.com
   SHOPIFY_ADMIN_API_KEY   = shpat_xxxxxxxxxxxxxxxxxxxx   (Shopify Admin API access token)
   SHOPIFY_WEBHOOK_SECRET  = xxxxxxxxxxxxxxxxxxxxxx       (from Shopify webhook settings)
-  WHATFLOW_API_KEY        = xxxxxxxxxxxxxxxxxxxx         (from Whatflow dashboard)
-  WHATFLOW_PHONE_ID       = xxxxxxxxxxxxxxxxxxxx         (from Whatflow dashboard)
   SMTP_HOST               = smtp.gmail.com               (or your provider)
   SMTP_PORT               = 587
   SMTP_USER               = you@gmail.com
@@ -73,6 +71,29 @@ STEP 2 — Add environment variables
   ADMIN_API_KEY           = any_strong_random_string     (protects /admin routes)
   ALLOWED_ORIGINS         = https://your-store.myshopify.com
   BASE_URL                = (fill in after Step 3)
+
+  NOTE: No Whatflow API keys are needed here. WhatsApp messages are sent by a
+  Shopify Flow automation (configured in Step 2b) using the Whatflow Flow action.
+  The backend fires a flowTriggerReceive GraphQL mutation using the Shopify
+  credentials above, and the Flow handles the rest.
+
+STEP 2b — Set up Shopify Flow with Whatflow
+  Prerequisites: Install the Whatflow app from the Shopify App Store on your store.
+
+  In Shopify Admin → Apps → Flow:
+    1. Click "Create workflow"
+    2. Choose trigger: select your custom app trigger (from this back-in-stock app)
+       — it fires with three variables: phone, product_title, product_url
+    3. Add action: search for "Whatflow" → "Send WhatsApp message"
+    4. Map the action fields:
+         To (phone):  {{ trigger.phone }}
+         Message:     Hi! Great news — {{ trigger.product_title }} is back in stock!
+                      Shop now: {{ trigger.product_url }}
+    5. Turn the workflow on
+
+  The SHOPIFY_ADMIN_API_KEY must have the "flows" (write_flow_data) scope enabled.
+  In Shopify Admin → Apps → develop apps → your app → Configuration → Admin API
+  scopes, ensure "write_flow_data" is checked, then re-install the app to apply.
 
 STEP 3 — Generate public domain
   In Railway: Settings → Networking → Generate Domain
@@ -143,7 +164,8 @@ GET /health
 - Gmail App Passwords: https://myaccount.google.com/apppasswords
   (requires 2FA to be enabled on your Google account)
 
-- Whatflow API docs: https://whatflow.io/docs
-  Find WHATFLOW_API_KEY and WHATFLOW_PHONE_ID in your Whatflow dashboard.
+- Whatflow Shopify app: install from the Shopify App Store, then configure its
+  Flow action as described in Step 2b. No API keys are needed in the backend —
+  all WhatsApp sending happens inside the Shopify Flow automation.
 
 ====================================================================

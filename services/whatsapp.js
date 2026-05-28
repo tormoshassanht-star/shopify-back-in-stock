@@ -1,61 +1,65 @@
 const fetch = require('node-fetch');
 
-const WHATFLOW_BASE_URL = 'https://api.whatflow.io/v1';
-
-/**
- * Send a WhatsApp back-in-stock notification via Whatflow.
- *
- * @param {object} subscriber - Row from the subscribers table
- * @param {string} productUrl - Full URL to the product page
- * @returns {Promise<{success: boolean, error?: string}>}
- */
+// Fires a Shopify Flow custom trigger. The store's Flow automation
+// (set up with the Whatflow app action) picks this up and sends the WhatsApp.
 async function sendWhatsApp(subscriber, productUrl) {
-  const apiKey   = process.env.WHATFLOW_API_KEY;
-  const phoneId  = process.env.WHATFLOW_PHONE_ID;
+  const domain = process.env.SHOPIFY_SHOP_DOMAIN;
+  const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
 
-  if (!apiKey || !phoneId) {
-    const msg = 'WHATFLOW_API_KEY or WHATFLOW_PHONE_ID not configured';
-    console.error(`[${new Date().toISOString()}] WhatsApp: ${msg}`);
+  if (!domain || !apiKey) {
+    const msg = 'SHOPIFY_SHOP_DOMAIN or SHOPIFY_ADMIN_API_KEY not configured';
+    console.error(`[${new Date().toISOString()}] WhatsApp Flow: ${msg}`);
     return { success: false, error: msg };
   }
 
-  const variantLabel = subscriber.variant_title && subscriber.variant_title !== 'Default Title'
-    ? ` (${subscriber.variant_title})`
-    : '';
+  const variantLabel =
+    subscriber.variant_title && subscriber.variant_title !== 'Default Title'
+      ? ` (${subscriber.variant_title})`
+      : '';
 
-  const message = [
-    `Hi! 👋 Great news — *${subscriber.product_title}${variantLabel}* is back in stock!`,
-    ``,
-    `Shop now before it sells out again:`,
-    productUrl,
-  ].join('\n');
+  const triggerPayload = {
+    phone:         subscriber.contact,
+    product_title: `${subscriber.product_title}${variantLabel}`,
+    product_url:   productUrl,
+  };
+
+  const mutation = `
+    mutation FlowTriggerReceive($body: String!) {
+      flowTriggerReceive(body: $body) {
+        userErrors { field message }
+      }
+    }
+  `;
 
   try {
-    const response = await fetch(`${WHATFLOW_BASE_URL}/messages/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        phone_id: phoneId,
-        to:       subscriber.contact,
-        message,
-      }),
-    });
+    const response = await fetch(
+      `https://${domain}/admin/api/2024-01/graphql.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':          'application/json',
+          'X-Shopify-Access-Token': apiKey,
+        },
+        body: JSON.stringify({
+          query:     mutation,
+          variables: { body: JSON.stringify(triggerPayload) },
+        }),
+      }
+    );
 
-    const body = await response.json().catch(() => ({}));
+    const data       = await response.json().catch(() => ({}));
+    const userErrors = data?.data?.flowTriggerReceive?.userErrors || [];
 
-    if (!response.ok) {
-      const errMsg = body.message || body.error || `HTTP ${response.status}`;
-      console.error(`[${new Date().toISOString()}] WhatsApp send failed for ${subscriber.contact}: ${errMsg}`);
+    if (!response.ok || userErrors.length > 0) {
+      const errMsg = userErrors.map(e => e.message).join(', ') || `HTTP ${response.status}`;
+      console.error(`[${new Date().toISOString()}] Flow trigger failed for ${subscriber.contact}: ${errMsg}`);
       return { success: false, error: errMsg };
     }
 
-    console.log(`[${new Date().toISOString()}] WhatsApp sent to ${subscriber.contact} for variant ${subscriber.variant_id}`);
+    console.log(`[${new Date().toISOString()}] Flow triggered for WhatsApp → ${subscriber.contact} (variant ${subscriber.variant_id})`);
     return { success: true };
   } catch (err) {
-    console.error(`[${new Date().toISOString()}] WhatsApp network error for ${subscriber.contact}:`, err.message);
+    console.error(`[${new Date().toISOString()}] Flow trigger network error for ${subscriber.contact}:`, err.message);
     return { success: false, error: err.message };
   }
 }
