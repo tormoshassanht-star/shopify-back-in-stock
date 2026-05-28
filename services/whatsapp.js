@@ -17,16 +17,21 @@ async function sendWhatsApp(subscriber, productUrl) {
       ? ` (${subscriber.variant_title})`
       : '';
 
+  const token = process.env.SHOPIFY_FLOW_WEBHOOK_TOKEN;
+
   const body = {
     fieldOne:   subscriber.contact,
     fieldTwo:   `${subscriber.product_title}${variantLabel}`,
     fieldThree: productUrl,
   };
 
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['X-Api-Key'] = token;
+
   try {
     const response = await fetch(webhookUrl, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body:    JSON.stringify(body),
     });
 
