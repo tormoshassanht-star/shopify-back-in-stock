@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Back in Stock — Dashboard</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f5f7;color:#1a1a1a;min-height:100vh}
+
+    /* ── LOGIN ── */
+    #login{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f5f7}
+    .login-card{background:#fff;padding:40px;border-radius:14px;box-shadow:0 4px 32px rgba(0,0,0,.09);width:380px}
+    .login-card .logo{font-size:28px;margin-bottom:4px}
+    .login-card h1{font-size:22px;font-weight:700;margin-bottom:6px}
+    .login-card p{color:#888;font-size:14px;margin-bottom:28px}
+
+    /* ── LAYOUT ── */
+    #app{display:none}
+    .topbar{background:#111;color:#fff;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:10}
+    .topbar h1{font-size:15px;font-weight:600;letter-spacing:-.2px}
+    .topbar-right{display:flex;align-items:center;gap:12px}
+    .refresh-ts{font-size:12px;color:#666}
+    .content{padding:28px;max-width:1440px;margin:0 auto}
+
+    /* ── STAT CARDS ── */
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:28px}
+    .stat{background:#fff;border-radius:11px;padding:20px 22px;border:1px solid #e8e8e8;transition:box-shadow .2s}
+    .stat:hover{box-shadow:0 4px 16px rgba(0,0,0,.07)}
+    .stat .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:#999;font-weight:600;margin-bottom:10px}
+    .stat .val{font-size:34px;font-weight:800;line-height:1}
+    .stat .sub{font-size:12px;color:#bbb;margin-top:6px}
+    .stat.pending .val{color:#e67e22}
+    .stat.notified .val{color:#27ae60}
+    .stat.wa .val{color:#25d366}
+
+    /* ── TOOLBAR ── */
+    .toolbar{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+    .toolbar input[type=text]{flex:1;min-width:200px;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s}
+    .toolbar input[type=text]:focus{border-color:#111}
+    .toolbar select{padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;background:#fff;cursor:pointer}
+    .toolbar select:focus{border-color:#111}
+
+    /* ── TABLE ── */
+    .card{background:#fff;border-radius:11px;border:1px solid #e8e8e8;overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead th{background:#fafafa;padding:11px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#999;font-weight:600;border-bottom:1px solid #efefef}
+    tbody td{padding:13px 16px;border-bottom:1px solid #f5f5f5;font-size:14px;vertical-align:middle}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:#fafafa}
+    .trunc{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    /* ── BADGES ── */
+    .badge{display:inline-block;padding:3px 10px;border-radius:50px;font-size:12px;font-weight:600}
+    .b-pending{background:#fff3e0;color:#e67e22}
+    .b-notified{background:#e8f5e9;color:#27ae60}
+    .b-error{background:#fdecea;color:#c0392b}
+    .b-wa{background:#e8f5e9;color:#128c7e}
+    .b-email{background:#e3f2fd;color:#1565c0}
+
+    /* ── BUTTONS ── */
+    .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 15px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;text-decoration:none}
+    .btn:hover{opacity:.88;transform:translateY(-1px)}
+    .btn:active{transform:translateY(0)}
+    .btn-dark{background:#111;color:#fff}
+    .btn-ghost{background:#f0f0f0;color:#444}
+    .btn-danger{background:#fdecea;color:#c0392b}
+    .btn-warn{background:#fff3e0;color:#c0781a}
+    .btn-sm{padding:5px 11px;font-size:12px}
+    .act-row{display:flex;gap:6px}
+
+    /* ── PAGINATION ── */
+    .pager{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-top:1px solid #f0f0f0;font-size:13px;color:#999}
+    .pager-btns{display:flex;gap:8px}
+
+    /* ── EMPTY ── */
+    .empty{padding:60px 20px;text-align:center;color:#bbb}
+    .empty-icon{font-size:44px;margin-bottom:12px}
+    .empty p{font-size:15px}
+
+    /* ── MODAL ── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+    .overlay.open{display:flex}
+    .modal{background:#fff;border-radius:14px;padding:32px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.15)}
+    .modal h2{font-size:18px;font-weight:700;margin-bottom:22px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#888;font-weight:600;margin-bottom:5px}
+    .field input,.field select{width:100%;padding:10px 13px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s}
+    .field input:focus,.field select:focus{border-color:#111}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+    .err-msg{color:#c0392b;font-size:13px;margin-top:10px;display:none}
+  </style>
+</head>
+<body>
+
+<!-- ───────────────────── LOGIN ───────────────────── -->
+<div id="login">
+  <div class="login-card">
+    <div class="logo">🔔</div>
+    <h1>Back in Stock</h1>
+    <p>Admin Dashboard — enter your API key to continue</p>
+    <div class="field">
+      <label>Admin API Key</label>
+      <input type="password" id="key-input" placeholder="Enter your ADMIN_API_KEY…"
+             onkeydown="if(event.key==='Enter')login()" style="width:100%;margin-top:0" />
+    </div>
+    <div id="login-err" class="err-msg" style="display:none;margin-bottom:12px">Invalid API key — check your ADMIN_API_KEY setting.</div>
+    <button class="btn btn-dark" style="width:100%;padding:12px;font-size:15px;margin-top:8px" onclick="login()">Login →</button>
+  </div>
+</div>
+
+<!-- ───────────────────── DASHBOARD ───────────────────── -->
+<div id="app">
+  <div class="topbar">
+    <h1>🔔 Back in Stock — Admin</h1>
+    <div class="topbar-right">
+      <span class="refresh-ts" id="refresh-ts"></span>
+      <button class="btn btn-ghost btn-sm" onclick="loadData()">↻ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="lbl">Total Subscribers</div>
+        <div class="val" id="s-total">—</div>
+        <div class="sub">all time</div>
+      </div>
+      <div class="stat pending">
+        <div class="lbl">Pending</div>
+        <div class="val" id="s-pending">—</div>
+        <div class="sub">waiting for restock</div>
+      </div>
+      <div class="stat notified">
+        <div class="lbl">Notified</div>
+        <div class="val" id="s-notified">—</div>
+        <div class="sub">successfully sent</div>
+      </div>
+      <div class="stat wa">
+        <div class="lbl">WhatsApp</div>
+        <div class="val" id="s-wa">—</div>
+        <div class="sub">channel</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Email</div>
+        <div class="val" id="s-email">—</div>
+        <div class="sub">channel</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="🔍  Search by contact, product or variant…" oninput="filterRows()" />
+      <select id="f-channel" onchange="filterRows()">
+        <option value="">All channels</option>
+        <option value="whatsapp">💬 WhatsApp</option>
+        <option value="email">✉ Email</option>
+      </select>
+      <select id="f-status" onchange="filterRows()">
+        <option value="">All statuses</option>
+        <option value="0">Pending</option>
+        <option value="1">Notified</option>
+      </select>
+      <button class="btn btn-dark" onclick="openModal()">+ Add Subscriber</button>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Variant</th>
+            <th>Channel</th>
+            <th>Contact</th>
+            <th>Status</th>
+            <th>Subscribed</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="empty" class="empty" style="display:none">
+        <div class="empty-icon">📭</div>
+        <p>No subscribers match your filters</p>
+      </div>
+      <div class="pager">
+        <span id="pager-info">—</span>
+        <div class="pager-btns">
+          <button class="btn btn-ghost btn-sm" id="btn-prev" onclick="prevPage()" disabled>← Prev</button>
+          <button class="btn btn-ghost btn-sm" id="btn-next" onclick="nextPage()">Next →</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ───────────────────── ADD SUBSCRIBER MODAL ───────────────────── -->
+<div class="overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2>Add Subscriber Manually</h2>
+    <div class="field-row">
+      <div class="field"><label>Product ID *</label><input id="m-pid" placeholder="8765432100" /></div>
+      <div class="field"><label>Variant ID *</label><input id="m-vid" placeholder="12345678900" /></div>
+    </div>
+    <div class="field"><label>Product Title</label><input id="m-ptitle" placeholder="HolyShape Bodysuit" /></div>
+    <div class="field-row">
+      <div class="field"><label>Variant Title</label><input id="m-vtitle" placeholder="Black / M" /></div>
+      <div class="field"><label>Product Handle</label><input id="m-handle" placeholder="holyshape-bodysuit" /></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Channel *</label>
+        <select id="m-channel">
+          <option value="email">✉ Email</option>
+          <option value="whatsapp">💬 WhatsApp</option>
+        </select>
+      </div>
+      <div class="field"><label>Store Domain</label><input id="m-domain" placeholder="holyshapestore.myshopify.com" /></div>
+    </div>
+    <div class="field"><label>Contact (email or phone) *</label><input id="m-contact" placeholder="user@email.com  or  +96170123456" /></div>
+    <div class="err-msg" id="modal-err"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-dark" onclick="addSubscriber()">Add Subscriber</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const BASE = '';
+  let apiKey = '', allRows = [], filteredRows = [], page = 0;
+  const PER = 50;
+
+  // ── AUTH ──────────────────────────────────────────────────────────────────
+  async function login() {
+    const k = document.getElementById('key-input').value.trim();
+    if (!k) return;
+    apiKey = k;
+    const ok = await loadData();
+    if (ok) {
+      localStorage.setItem('bis_key', k);
+      show('app'); hide('login');
+      document.getElementById('login-err').style.display = 'none';
+    } else {
+      apiKey = '';
+      document.getElementById('login-err').style.display = 'block';
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('bis_key');
+    apiKey = '';
+    show('login'); hide('app');
+  }
+
+  // ── DATA ──────────────────────────────────────────────────────────────────
+  async function loadData() {
+    try {
+      const res = await fetch(BASE + '/admin/subscribers?limit=5000', {
+        headers: { 'x-admin-key': apiKey }
+      });
+      if (res.status === 401) return false;
+      const data = await res.json();
+      const s = data.stats || {};
+      setText('s-total',   s.total || 0);
+      setText('s-pending', s.pending || 0);
+      setText('s-notified',s.notified || 0);
+      setText('s-wa',      s.whatsapp_count || 0);
+      setText('s-email',   s.email_count || 0);
+      allRows = data.subscribers || [];
+      filterRows();
+      setText('refresh-ts', 'Updated ' + new Date().toLocaleTimeString());
+      return true;
+    } catch { return false; }
+  }
+
+  function filterRows() {
+    const q  = document.getElementById('search').value.toLowerCase();
+    const ch = document.getElementById('f-channel').value;
+    const st = document.getElementById('f-status').value;
+    filteredRows = allRows.filter(r => {
+      if (q && !['contact','product_title','variant_title'].some(k => (r[k]||'').toLowerCase().includes(q))) return false;
+      if (ch && r.channel !== ch) return false;
+      if (st !== '' && String(r.notified) !== st) return false;
+      return true;
+    });
+    page = 0;
+    render();
+  }
+
+  function render() {
+    const start = page * PER;
+    const rows  = filteredRows.slice(start, start + PER);
+    const tbody = document.getElementById('tbody');
+
+    document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+    document.getElementById('btn-prev').disabled = page === 0;
+    document.getElementById('btn-next').disabled = start + PER >= filteredRows.length;
+    setText('pager-info',
+      filteredRows.length === 0
+        ? 'No results'
+        : `${start + 1}–${Math.min(start + rows.length, filteredRows.length)} of ${filteredRows.length}`
+    );
+
+    tbody.innerHTML = rows.map(r => {
+      const chBadge = r.channel === 'whatsapp'
+        ? '<span class="badge b-wa">💬 WhatsApp</span>'
+        : '<span class="badge b-email">✉ Email</span>';
+      const stBadge = r.notify_error
+        ? `<span class="badge b-error" title="${esc(r.notify_error)}">⚠ Error</span>`
+        : r.notified
+          ? '<span class="badge b-notified">✓ Notified</span>'
+          : '<span class="badge b-pending">Pending</span>';
+      const date = r.created_at
+        ? new Date(r.created_at.endsWith('Z') ? r.created_at : r.created_at + 'Z')
+            .toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' })
+        : '—';
+      return `<tr>
+        <td style="color:#bbb;font-size:12px">#${r.id}</td>
+        <td class="trunc" title="${esc(r.product_title||'')}">${esc(r.product_title||'—')}</td>
+        <td style="color:#888;font-size:13px">${r.variant_title && r.variant_title !== 'Default Title' ? esc(r.variant_title) : '—'}</td>
+        <td>${chBadge}</td>
+        <td style="font-family:monospace;font-size:13px">${esc(r.contact)}</td>
+        <td>${stBadge}</td>
+        <td style="color:#aaa;font-size:13px">${date}</td>
+        <td>
+          <div class="act-row">
+            ${r.notified ? `<button class="btn btn-warn btn-sm" onclick="resetRow(${r.id})">↺ Re-queue</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="delRow(${r.id})">Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function prevPage() { if (page > 0) { page--; render(); } }
+  function nextPage() { if ((page + 1) * PER < filteredRows.length) { page++; render(); } }
+
+  // ── ROW ACTIONS ───────────────────────────────────────────────────────────
+  async function delRow(id) {
+    if (!confirm('Delete this subscriber?')) return;
+    await fetch(`${BASE}/admin/subscribers/${id}`, { method:'DELETE', headers:{'x-admin-key':apiKey} });
+    await loadData();
+  }
+
+  async function resetRow(id) {
+    if (!confirm('Re-queue this subscriber for notification?')) return;
+    await fetch(`${BASE}/admin/subscribers/${id}/reset`, { method:'PATCH', headers:{'x-admin-key':apiKey} });
+    await loadData();
+  }
+
+  // ── ADD SUBSCRIBER ────────────────────────────────────────────────────────
+  function openModal()  { document.getElementById('modal').classList.add('open'); }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    document.getElementById('modal-err').style.display = 'none';
+  }
+
+  async function addSubscriber() {
+    const payload = {
+      product_id:     get('m-pid'),
+      variant_id:     get('m-vid'),
+      product_title:  get('m-ptitle'),
+      variant_title:  get('m-vtitle'),
+      product_handle: get('m-handle'),
+      channel:        document.getElementById('m-channel').value,
+      contact:        get('m-contact'),
+      store_domain:   get('m-domain'),
+    };
+    const err = document.getElementById('modal-err');
+    if (!payload.product_id || !payload.variant_id || !payload.contact) {
+      err.textContent = 'Product ID, Variant ID and Contact are required.';
+      err.style.display = 'block'; return;
+    }
+    const res = await fetch(`${BASE}/admin/subscribers`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-admin-key': apiKey },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.ok) { closeModal(); await loadData(); }
+    else { err.textContent = data.error || 'Failed'; err.style.display = 'block'; }
+  }
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
+  function show(id) { document.getElementById(id).style.display = id === 'login' ? 'flex' : 'block'; }
+  function hide(id) { document.getElementById(id).style.display = 'none'; }
+  function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+  function get(id)  { return (document.getElementById(id).value||'').trim(); }
+  function esc(s)   { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ── BOOT ──────────────────────────────────────────────────────────────────
+  const saved = localStorage.getItem('bis_key');
+  if (saved) {
+    apiKey = saved;
+    loadData().then(ok => {
+      if (ok) { show('app'); hide('login'); }
+      else { localStorage.removeItem('bis_key'); }
+    });
+  }
+
+  setInterval(loadData, 60000);
+</script>
+</body>
+</html>

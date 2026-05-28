@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
+const cors    = require('cors');
+const path    = require('path');
 
 // Initialize DB (runs schema migrations on first start)
 require('./db');
@@ -12,22 +13,11 @@ const adminRoutes    = require('./routes/admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS — allow configured Shopify store origins
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(o => o.trim())
-  .filter(Boolean);
-
+// CORS — allow all origins so the widget works on custom Shopify domains.
+// Admin routes are protected by ADMIN_API_KEY regardless of origin.
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. server-to-server, Postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    callback(new Error(`CORS: origin ${origin} not allowed`));
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
+  origin: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-admin-key'],
 }));
 
@@ -39,6 +29,9 @@ app.use(express.json());
 
 app.use('/subscribe', subscribeRoutes);
 app.use('/admin', adminRoutes);
+
+// Serve admin dashboard
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

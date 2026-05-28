@@ -91,4 +91,48 @@ router.get('/stats', (_req, res) => {
   }
 });
 
+// DELETE /admin/subscribers/:id
+router.delete('/subscribers/:id', (req, res) => {
+  try {
+    const result = db.prepare('DELETE FROM subscribers WHERE id = ?').run(req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /admin/subscribers/:id/reset — re-queue for notification
+router.patch('/subscribers/:id/reset', (req, res) => {
+  try {
+    const result = db.prepare(
+      'UPDATE subscribers SET notified = 0, notified_at = NULL, notify_error = NULL WHERE id = ?'
+    ).run(req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/subscribers — manually add a subscriber
+router.post('/subscribers', (req, res) => {
+  try {
+    const { product_id, variant_id, product_title, variant_title, product_handle, channel, contact, store_domain } = req.body;
+    if (!product_id || !variant_id || !channel || !contact) {
+      return res.status(400).json({ error: 'product_id, variant_id, channel, and contact are required' });
+    }
+    const result = db.prepare(`
+      INSERT INTO subscribers (product_id, variant_id, product_title, variant_title, product_handle, channel, contact, store_domain)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(product_id, variant_id, product_title || '', variant_title || '', product_handle || '', channel, contact, store_domain || '');
+    res.status(201).json({ success: true, id: result.lastInsertRowid });
+  } catch (err) {
+    if (err.message.includes('UNIQUE constraint')) {
+      return res.status(409).json({ error: 'Already subscribed' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
