@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 // POSTs to the Shopify Flow Webhooks URL. The Flow automation picks this up
 // and sends the WhatsApp via the Whatflow action.
 // Field names (fieldOne/fieldTwo/fieldThree) are fixed by the Flow Webhooks App.
