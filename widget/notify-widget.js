@@ -315,10 +315,20 @@
     return false;
   }
 
+  function variantIsPreOrder() {
+    var btn = document.querySelector('[name="add"],[data-add-to-cart],.product-form__submit,.btn-add-to-cart');
+    if (!btn) return false;
+    var text = (btn.textContent || btn.innerText || '').toLowerCase();
+    return text.includes('pre-order') || text.includes('pre order') || text.includes('preorder');
+  }
+
   async function updateVisibility() {
     if (!currentVariantId) { hideWidget(); return; }
 
-    // Try Shopify's public product endpoint first (location-aware, no token needed)
+    // Show on pre-order variants too
+    if (variantIsPreOrder()) { showWidget(); return; }
+
+    // Check actual availability via Shopify's public product endpoint (location-aware)
     var unavailable = await fetchVariantUnavailable(currentVariantId, currentProductHandle);
     if (unavailable !== null) {
       unavailable ? showWidget() : hideWidget();
