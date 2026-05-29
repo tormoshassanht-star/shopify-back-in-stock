@@ -3,7 +3,6 @@
  * Run with: node scripts/register-webhooks.js
  */
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
-const fetch = require('node-fetch');
 
 const domain  = process.env.SHOPIFY_SHOP_DOMAIN;
 const apiKey  = process.env.SHOPIFY_ADMIN_API_KEY;

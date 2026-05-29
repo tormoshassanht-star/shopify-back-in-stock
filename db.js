@@ -1,12 +1,14 @@
-const Database = require('better-sqlite3');
+'use strict';
+const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'subscribers.db');
+const DB_DIR  = process.env.DB_DIR || __dirname;
+const DB_PATH = path.join(DB_DIR, 'subscribers.db');
 
-const db = new Database(DB_PATH);
+const db = new DatabaseSync(DB_PATH);
 
-// Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS subscribers (
@@ -36,6 +38,15 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_subscribers_notified
     ON subscribers(notified);
+
+  CREATE TABLE IF NOT EXISTS processed_webhooks (
+    webhook_id   TEXT PRIMARY KEY,
+    processed_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
+
+// Auto-migrate: add columns that don't exist in older DB files
+const existingCols = db.prepare('PRAGMA table_info(subscribers)').all().map(r => r.name);
+// Example: if (!existingCols.includes('new_col')) db.exec('ALTER TABLE subscribers ADD COLUMN new_col TEXT');
 
 module.exports = db;

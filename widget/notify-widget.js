@@ -429,6 +429,10 @@
   function init() {
     if (window.location.pathname.indexOf('/products/') === -1) return;
 
+    // Lebanon-only guard — hide widget for non-LB markets
+    var country = window.Shopify && window.Shopify.country;
+    if (country && country !== 'LB') return;
+
     injectStyles();
 
     // Place widget after the buy-button area, not inside the form
