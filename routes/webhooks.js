@@ -102,18 +102,36 @@ async function resolveVariantFromInventoryItem(inventoryItemId) {
     return null;
   }
 
+  // Use GraphQL — the REST variants.json?inventory_item_ids= filter is unreliable
+  const gid   = `gid://shopify/InventoryItem/${inventoryItemId}`;
+  const query = `{ inventoryItem(id: "${gid}") { variant { id } } }`;
+
   try {
-    const url = `https://${domain}/admin/api/2024-01/variants.json?inventory_item_ids=${inventoryItemId}&fields=id`;
-    const res  = await fetch(url, { headers: { 'X-Shopify-Access-Token': apiKey } });
+    const res = await fetch(`https://${domain}/admin/api/2024-01/graphql.json`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':           'application/json',
+        'X-Shopify-Access-Token': apiKey,
+      },
+      body: JSON.stringify({ query }),
+    });
 
     if (!res.ok) {
-      console.error(`[${ts()}] Shopify API error ${res.status} for inventory_item ${inventoryItemId}`);
+      console.error(`[${ts()}] Shopify GraphQL error ${res.status} for inventory_item ${inventoryItemId}`);
       return null;
     }
 
     const data    = await res.json();
-    const variant = data.variants && data.variants[0];
-    return variant ? String(variant.id) : null;
+    const variantGid = data?.data?.inventoryItem?.variant?.id;
+    if (!variantGid) {
+      console.warn(`[${ts()}] No variant found for inventory_item ${inventoryItemId}`);
+      return null;
+    }
+
+    // Extract numeric ID from "gid://shopify/ProductVariant/48769984364846"
+    const numericId = variantGid.split('/').pop();
+    console.log(`[${ts()}] Resolved inventory_item ${inventoryItemId} → variant ${numericId}`);
+    return numericId;
   } catch (err) {
     console.error(`[${ts()}] resolveVariantFromInventoryItem error:`, err.message);
     return null;
