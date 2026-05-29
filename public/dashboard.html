@@ -421,7 +421,9 @@
         ? new Date(r.created_at.includes('T') ? r.created_at : r.created_at + 'Z')
             .toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})
         : '—';
-      const vtitle = r.variant_title && r.variant_title !== 'Default Title' ? esc(r.variant_title) : '—';
+      const vtitle = (r.variant_title && r.variant_title !== 'Default Title')
+        ? esc(r.variant_title)
+        : `<span style="color:var(--muted);font-size:11px">${esc(r.variant_id)}</span>`;
 
       return `<tr class="${selected.has(r.id) ? 'selected' : ''}">
         <td><input type="checkbox" ${selected.has(r.id)?'checked':''} onchange="toggleRow(${r.id}, this.checked)"></td>

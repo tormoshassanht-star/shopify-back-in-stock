@@ -5,8 +5,8 @@ const crypto  = require('crypto');
 const db      = require('../db');
 const notify  = require('../services/notify');
 
-// Beirut warehouse — only process inventory updates from this location
-const BEIRUT_LOCATION_ID = '74671718702';
+// Restrict to a specific warehouse location (optional — set BEIRUT_LOCATION_ID env var)
+const BEIRUT_LOCATION_ID = process.env.BEIRUT_LOCATION_ID || null;
 
 router.use(express.raw({ type: 'application/json' }));
 
@@ -45,9 +45,9 @@ router.post('/inventory', async (req, res) => {
 
   const { inventory_item_id, location_id, available } = payload;
 
-  // Only process updates from the Beirut warehouse
-  if (String(location_id) !== BEIRUT_LOCATION_ID) {
-    console.log(`[${ts()}] Skipping inventory update from non-Beirut location ${location_id}`);
+  // If BEIRUT_LOCATION_ID is set, only process updates from that location
+  if (BEIRUT_LOCATION_ID && String(location_id) !== BEIRUT_LOCATION_ID) {
+    console.log(`[${ts()}] Skipping inventory update from location ${location_id} (not Beirut)`);
     return;
   }
 
