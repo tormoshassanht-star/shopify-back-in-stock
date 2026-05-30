@@ -10,16 +10,23 @@ async function sendWhatsApp(subscriber, productUrl) {
     return { success: false, error: msg };
   }
 
-  const variantLabel =
+  const variant =
     subscriber.variant_title && subscriber.variant_title !== 'Default Title'
-      ? ` (${subscriber.variant_title})`
+      ? subscriber.variant_title
       : '';
+
+  // fieldOne: recipient phone
+  // fieldTwo: product info (title + variant)
+  // fieldThree: product URL
+  const productInfo = variant
+    ? `${subscriber.product_title} (${variant})`
+    : subscriber.product_title;
 
   const token = process.env.SHOPIFY_FLOW_WEBHOOK_TOKEN;
 
   const body = {
     fieldOne:   subscriber.contact,
-    fieldTwo:   `${subscriber.product_title}${variantLabel}`,
+    fieldTwo:   productInfo,
     fieldThree: productUrl,
   };
 
