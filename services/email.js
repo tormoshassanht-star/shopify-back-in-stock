@@ -2,10 +2,10 @@
 // via Flow's native "Send email" action — mirrors the WhatsApp setup.
 // Field names (fieldOne/fieldTwo/fieldThree) are fixed by the Flow Webhooks App.
 async function sendEmail(subscriber, productUrl) {
-  const webhookUrl = process.env.SHOPIFY_FLOW_EMAIL_WEBHOOK_URL;
+  const webhookUrl = process.env.SHOPIFY_FLOW_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    const msg = 'SHOPIFY_FLOW_EMAIL_WEBHOOK_URL not configured';
+    const msg = 'SHOPIFY_FLOW_WEBHOOK_URL not configured';
     console.error(`[${new Date().toISOString()}] Email Flow: ${msg}`);
     return { success: false, error: msg };
   }
@@ -19,7 +19,7 @@ async function sendEmail(subscriber, productUrl) {
     ? `${subscriber.product_title} (${variant})`
     : subscriber.product_title;
 
-  const token = process.env.SHOPIFY_FLOW_EMAIL_WEBHOOK_TOKEN;
+  const token = process.env.SHOPIFY_FLOW_WEBHOOK_TOKEN;
 
   // fieldOne: recipient email
   // fieldTwo: product info (title + variant)
