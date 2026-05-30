@@ -1,6 +1,34 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
+const notify  = require('../services/notify');
+
+async function fetchVariantAvailable(variantId) {
+  const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
+  const domain = process.env.SHOPIFY_SHOP_DOMAIN;
+  if (!apiKey || !domain) return null;
+  const query = `{
+    productVariant(id: "gid://shopify/ProductVariant/${variantId}") {
+      inventoryItem {
+        inventoryLevels(first: 10) {
+          edges { node { quantities(names: ["available"]) { quantity } } }
+        }
+      }
+    }
+  }`;
+  const res = await fetch(`https://${domain}/admin/api/2025-01/graphql.json`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': apiKey },
+    body:    JSON.stringify({ query }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const levels = data?.data?.productVariant?.inventoryItem?.inventoryLevels?.edges || [];
+  return levels.reduce((sum, edge) => {
+    const q = (edge.node.quantities || []).find(x => x.quantity != null);
+    return sum + (q ? q.quantity : 0);
+  }, 0);
+}
 
 function requireAdminKey(req, res, next) {
   const adminKey = process.env.ADMIN_API_KEY;
@@ -110,6 +138,33 @@ router.patch('/subscribers/:id/reset', (req, res) => {
     ).run(req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/subscribers/:id/resync — check live stock, send if available
+router.post('/subscribers/:id/resync', async (req, res) => {
+  try {
+    const sub = db.prepare('SELECT * FROM subscribers WHERE id = ?').get(req.params.id);
+    if (!sub) return res.status(404).json({ error: 'Not found' });
+
+    const available = await fetchVariantAvailable(sub.variant_id);
+    if (available === null) {
+      return res.status(502).json({ error: 'Could not check Shopify inventory' });
+    }
+    if (available <= 0) {
+      return res.json({ success: false, available, message: 'Still out of stock — nothing sent' });
+    }
+
+    db.prepare('UPDATE subscribers SET notified = 0, notify_error = NULL, webhook_triggered = 1 WHERE id = ?').run(sub.id);
+    await notify.send({ ...sub, notified: 0 });
+
+    const updated = db.prepare('SELECT notified, notify_error FROM subscribers WHERE id = ?').get(sub.id);
+    if (updated.notified === 1) {
+      return res.json({ success: true, available, message: `In stock (${available}) — notification sent` });
+    }
+    return res.json({ success: false, available, error: updated.notify_error || 'Send failed' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
