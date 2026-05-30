@@ -18,7 +18,7 @@ function validateSubscribeBody(body) {
   return null;
 }
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const {
       product_id,
