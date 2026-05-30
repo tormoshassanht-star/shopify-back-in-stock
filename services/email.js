@@ -95,7 +95,13 @@ async function sendEmail(subscriber, productUrl) {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type':  'application/json',
       },
-      body: JSON.stringify({ from, to: subscriber.contact, subject, html }),
+      body: JSON.stringify({
+        from,
+        to: subscriber.contact,
+        subject,
+        html,
+        ...(process.env.EMAIL_REPLY_TO ? { reply_to: process.env.EMAIL_REPLY_TO } : {}),
+      }),
     });
 
     if (!res.ok) {
