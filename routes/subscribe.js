@@ -53,20 +53,47 @@ router.post('/', async (req, res) => {
     // Get customer location from Shopify/Cloudflare header
     const customerLocation = req.headers['cf-ipcountry'] || req.headers['x-country'] || 'LB';
 
-    // Fetch current inventory count for this variant
+    // Fetch current inventory count for this variant via GraphQL
     let inventoryAtSubscribed = 0;
     try {
       const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
       const domain = process.env.SHOPIFY_SHOP_DOMAIN;
       if (apiKey && domain) {
-        const invRes = await fetch(
-          `https://${domain}/admin/api/2024-01/inventory_levels.json?inventory_item_ids=&variant_id=${variant_id}`,
-          { headers: { 'X-Shopify-Access-Token': apiKey } }
+        const variantGid = `gid://shopify/ProductVariant/${variant_id}`;
+        const variantQuery = `{ productVariant(id: "${variantGid}") { inventoryItem { id } } }`;
+        const varRes = await fetch(
+          `https://${domain}/admin/api/2024-01/graphql.json`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': apiKey,
+            },
+            body: JSON.stringify({ query: variantQuery }),
+          }
         );
-        if (invRes.ok) {
-          const invData = await invRes.json();
-          // Sum available across all locations
-          inventoryAtSubscribed = (invData.inventory_levels || []).reduce((sum, iv) => sum + (iv.available || 0), 0);
+        if (varRes.ok) {
+          const varData = await varRes.json();
+          const inventoryItemGid = varData?.data?.productVariant?.inventoryItem?.id;
+          if (inventoryItemGid) {
+            const invQuery = `{ inventoryItem(id: "${inventoryItemGid}") { inventoryLevels(first: 10) { edges { node { available } } } } }`;
+            const invRes = await fetch(
+              `https://${domain}/admin/api/2024-01/graphql.json`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Shopify-Access-Token': apiKey,
+                },
+                body: JSON.stringify({ query: invQuery }),
+              }
+            );
+            if (invRes.ok) {
+              const invData = await invRes.json();
+              const levels = invData?.data?.inventoryItem?.inventoryLevels?.edges || [];
+              inventoryAtSubscribed = levels.reduce((sum, edge) => sum + (edge.node.available || 0), 0);
+            }
+          }
         }
       }
     } catch (err) {

@@ -400,11 +400,21 @@
   }
 
   function getVariantTitle(id) {
+    function buildFromOptions(variant) {
+      var parts = [];
+      if (variant.option1) parts.push(variant.option1);
+      if (variant.option2) parts.push(variant.option2);
+      if (variant.option3) parts.push(variant.option3);
+      return parts.join(' / ');
+    }
     try {
       var m = window.ShopifyAnalytics && window.ShopifyAnalytics.meta;
       if (m && m.product && m.product.variants) {
         for (var i = 0; i < m.product.variants.length; i++) {
-          if (String(m.product.variants[i].id) === String(id)) return m.product.variants[i].title || '';
+          if (String(m.product.variants[i].id) === String(id)) {
+            var v = m.product.variants[i];
+            return (v.title && v.title !== 'Default Title') ? v.title : buildFromOptions(v);
+          }
         }
       }
     } catch (e) {}
@@ -413,7 +423,8 @@
       if (window.Shopify && window.Shopify.product && window.Shopify.product.variants) {
         for (var j = 0; j < window.Shopify.product.variants.length; j++) {
           if (String(window.Shopify.product.variants[j].id) === String(id)) {
-            return window.Shopify.product.variants[j].title || '';
+            var v2 = window.Shopify.product.variants[j];
+            return (v2.title && v2.title !== 'Default Title') ? v2.title : buildFromOptions(v2);
           }
         }
       }
