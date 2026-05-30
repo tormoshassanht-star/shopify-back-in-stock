@@ -3,7 +3,7 @@ const { sendWhatsApp } = require('./whatsapp');
 const { sendEmail }    = require('./email');
 
 function buildProductUrl(subscriber) {
-  const domain  = subscriber.store_domain || process.env.SHOPIFY_SHOP_DOMAIN || '';
+  const domain  = process.env.SHOPIFY_STOREFRONT_DOMAIN || subscriber.store_domain || process.env.SHOPIFY_SHOP_DOMAIN || '';
   const handle  = subscriber.product_handle || '';
   const variant = subscriber.variant_id || '';
 
