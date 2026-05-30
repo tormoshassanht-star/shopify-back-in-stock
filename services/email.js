@@ -1,33 +1,9 @@
-const nodemailer = require('nodemailer');
-
-let transporter = null;
-
-function getTransporter() {
-  if (transporter) return transporter;
-
-  transporter = nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   Number(process.env.SMTP_PORT) || 587,
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  return transporter;
-}
-
-/**
- * Send an email back-in-stock notification via Nodemailer.
- *
- * @param {object} subscriber - Row from the subscribers table
- * @param {string} productUrl - Full URL to the product page
- * @returns {Promise<{success: boolean, error?: string}>}
- */
+// Resend HTTP API — Railway blocks outbound SMTP, so we can't use nodemailer
 async function sendEmail(subscriber, productUrl) {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    const msg = 'SMTP credentials not configured';
+  const apiKey = process.env.RESEND_API_KEY;
+  const from   = process.env.EMAIL_FROM;
+  if (!apiKey || !from) {
+    const msg = 'RESEND_API_KEY or EMAIL_FROM not configured';
     console.error(`[${new Date().toISOString()}] Email: ${msg}`);
     return { success: false, error: msg };
   }
@@ -113,14 +89,23 @@ async function sendEmail(subscriber, productUrl) {
 </html>`.trim();
 
   try {
-    const info = await getTransporter().sendMail({
-      from:    process.env.SMTP_FROM || process.env.SMTP_USER,
-      to:      subscriber.contact,
-      subject,
-      html,
+    const res = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({ from, to: subscriber.contact, subject, html }),
     });
 
-    console.log(`[${new Date().toISOString()}] Email sent to ${subscriber.contact} for variant ${subscriber.variant_id} (messageId: ${info.messageId})`);
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`[${new Date().toISOString()}] Email send failed for ${subscriber.contact}: HTTP ${res.status} ${errBody}`);
+      return { success: false, error: `HTTP ${res.status}: ${errBody}` };
+    }
+
+    const data = await res.json();
+    console.log(`[${new Date().toISOString()}] Email sent to ${subscriber.contact} for variant ${subscriber.variant_id} (id: ${data.id})`);
     return { success: true };
   } catch (err) {
     console.error(`[${new Date().toISOString()}] Email send failed for ${subscriber.contact}:`, err.message);
