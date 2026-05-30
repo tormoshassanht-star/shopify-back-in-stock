@@ -50,11 +50,14 @@ router.post('/', (req, res) => {
       });
     }
 
+    // Get customer location from Shopify/Cloudflare header
+    const customerLocation = req.headers['cf-ipcountry'] || req.headers['x-country'] || 'LB';
+
     db.prepare(`
       INSERT INTO subscribers
-        (product_id, variant_id, product_title, variant_title, product_handle, channel, contact, store_domain)
+        (product_id, variant_id, product_title, variant_title, product_handle, channel, contact, store_domain, customer_location)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       String(product_id),
       String(variant_id),
@@ -64,6 +67,7 @@ router.post('/', (req, res) => {
       channel,
       normalizedContact,
       store_domain,
+      customerLocation,
     );
 
     console.log(`[${new Date().toISOString()}] New subscriber: ${channel} ${normalizedContact} for variant ${variant_id} (${variant_title || product_title})`);

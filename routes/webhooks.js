@@ -85,6 +85,10 @@ router.post('/inventory', async (req, res) => {
     }
 
     console.log(`[${ts()}] Notifying ${subscribers.length} subscriber(s) for variant ${variantId}`);
+
+    // Mark that webhook was triggered for this variant
+    db.prepare('UPDATE subscribers SET webhook_triggered = 1 WHERE variant_id = ?').run(String(variantId));
+
     for (const subscriber of subscribers) {
       await notify.send(subscriber);
     }

@@ -210,6 +210,8 @@
             <th data-col="variant_title" onclick="sortBy('variant_title')">Variant <span class="sort-icon">↕</span></th>
             <th data-col="channel" onclick="sortBy('channel')">Channel <span class="sort-icon">↕</span></th>
             <th data-col="contact" onclick="sortBy('contact')">Contact <span class="sort-icon">↕</span></th>
+            <th data-col="customer_location" onclick="sortBy('customer_location')">Location <span class="sort-icon">↕</span></th>
+            <th data-col="webhook_triggered" onclick="sortBy('webhook_triggered')">Triggered <span class="sort-icon">↕</span></th>
             <th data-col="notified" onclick="sortBy('notified')">Status <span class="sort-icon">↕</span></th>
             <th data-col="created_at" onclick="sortBy('created_at')">Subscribed <span class="sort-icon">↕</span></th>
             <th class="no-sort">Actions</th>
@@ -425,6 +427,10 @@
         ? esc(r.variant_title)
         : `<span style="color:var(--muted);font-size:11px">${esc(r.variant_id)}</span>`;
 
+      const webhookBadge = r.webhook_triggered
+        ? '<span class="badge b-notified">✓ Yes</span>'
+        : '<span class="badge b-pending">✗ No</span>';
+
       return `<tr class="${selected.has(r.id) ? 'selected' : ''}">
         <td><input type="checkbox" ${selected.has(r.id)?'checked':''} onchange="toggleRow(${r.id}, this.checked)"></td>
         <td style="color:var(--muted);font-size:12px">#${r.id}</td>
@@ -432,6 +438,8 @@
         <td style="color:var(--muted);font-size:12px">${vtitle}</td>
         <td>${chBadge}</td>
         <td style="font-family:monospace;font-size:12px">${esc(r.contact)}</td>
+        <td style="font-weight:600;font-size:12px">${esc(r.customer_location||'—')}</td>
+        <td>${webhookBadge}</td>
         <td>${stBadge}</td>
         <td style="color:var(--muted);font-size:12px">${date}</td>
         <td>

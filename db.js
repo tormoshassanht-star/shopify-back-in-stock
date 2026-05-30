@@ -47,6 +47,14 @@ db.exec(`
 
 // Auto-migrate: add columns that don't exist in older DB files
 const existingCols = db.prepare('PRAGMA table_info(subscribers)').all().map(r => r.name);
-// Example: if (!existingCols.includes('new_col')) db.exec('ALTER TABLE subscribers ADD COLUMN new_col TEXT');
+if (!existingCols.includes('inventory_at_subscribed')) {
+  db.exec('ALTER TABLE subscribers ADD COLUMN inventory_at_subscribed INTEGER DEFAULT 0');
+}
+if (!existingCols.includes('customer_location')) {
+  db.exec('ALTER TABLE subscribers ADD COLUMN customer_location TEXT');
+}
+if (!existingCols.includes('webhook_triggered')) {
+  db.exec('ALTER TABLE subscribers ADD COLUMN webhook_triggered INTEGER DEFAULT 0');
+}
 
 module.exports = db;
