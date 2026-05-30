@@ -67,6 +67,7 @@
     .btn-ghost:hover{border-color:var(--text);color:var(--text);opacity:1}
     .btn-danger{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
     .btn-warn{background:rgba(249,115,22,.15);color:var(--warn);border:1px solid rgba(249,115,22,.3)}
+    .btn-info{background:rgba(59,130,246,.15);color:var(--info);border:1px solid rgba(59,130,246,.3)}
     .btn-sm{padding:5px 10px;font-size:12px}
 
     /* ── TABLE ── */
@@ -447,6 +448,7 @@
         <td style="color:var(--muted);font-size:12px">${date}</td>
         <td>
           <div class="act-row">
+            <button class="btn btn-info btn-sm" onclick="resyncRow(${r.id})" title="Check stock & send if available">⟳</button>
             ${r.notified ? `<button class="btn btn-warn btn-sm" onclick="resetRow(${r.id})">↺</button>` : ''}
             <button class="btn btn-danger btn-sm" onclick="delRow(${r.id})">🗑</button>
           </div>
@@ -489,6 +491,13 @@
   async function resetRow(id) {
     if (!confirm(`Re-queue subscriber #${id} for notification?`)) return;
     await fetch(`${BASE}/admin/subscribers/${id}/reset`, { method:'PATCH', headers:{'x-admin-key':apiKey} });
+    await loadData();
+  }
+
+  async function resyncRow(id) {
+    const res  = await fetch(`${BASE}/admin/subscribers/${id}/resync`, { method:'POST', headers:{'x-admin-key':apiKey} });
+    const data = await res.json();
+    alert(data.message || data.error || (data.success ? 'Sent' : 'Failed'));
     await loadData();
   }
 
