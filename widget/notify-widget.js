@@ -408,6 +408,16 @@
         }
       }
     } catch (e) {}
+    // Fallback: try window.Shopify.product (Dawn/Prestige themes)
+    try {
+      if (window.Shopify && window.Shopify.product && window.Shopify.product.variants) {
+        for (var j = 0; j < window.Shopify.product.variants.length; j++) {
+          if (String(window.Shopify.product.variants[j].id) === String(id)) {
+            return window.Shopify.product.variants[j].title || '';
+          }
+        }
+      }
+    } catch (e2) {}
     return '';
   }
 

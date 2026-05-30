@@ -211,6 +211,7 @@
             <th data-col="channel" onclick="sortBy('channel')">Channel <span class="sort-icon">↕</span></th>
             <th data-col="contact" onclick="sortBy('contact')">Contact <span class="sort-icon">↕</span></th>
             <th data-col="customer_location" onclick="sortBy('customer_location')">Location <span class="sort-icon">↕</span></th>
+            <th data-col="inventory_at_subscribed" onclick="sortBy('inventory_at_subscribed')">Qty <span class="sort-icon">↕</span></th>
             <th data-col="webhook_triggered" onclick="sortBy('webhook_triggered')">Triggered <span class="sort-icon">↕</span></th>
             <th data-col="notified" onclick="sortBy('notified')">Status <span class="sort-icon">↕</span></th>
             <th data-col="created_at" onclick="sortBy('created_at')">Subscribed <span class="sort-icon">↕</span></th>
@@ -439,6 +440,7 @@
         <td>${chBadge}</td>
         <td style="font-family:monospace;font-size:12px">${esc(r.contact)}</td>
         <td style="font-weight:600;font-size:12px">${esc(r.customer_location||'—')}</td>
+        <td style="text-align:center;font-weight:600">${r.inventory_at_subscribed || 0}</td>
         <td>${webhookBadge}</td>
         <td>${stBadge}</td>
         <td style="color:var(--muted);font-size:12px">${date}</td>

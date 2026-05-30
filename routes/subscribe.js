@@ -53,11 +53,31 @@ router.post('/', (req, res) => {
     // Get customer location from Shopify/Cloudflare header
     const customerLocation = req.headers['cf-ipcountry'] || req.headers['x-country'] || 'LB';
 
+    // Fetch current inventory count for this variant
+    let inventoryAtSubscribed = 0;
+    try {
+      const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
+      const domain = process.env.SHOPIFY_SHOP_DOMAIN;
+      if (apiKey && domain) {
+        const invRes = await fetch(
+          `https://${domain}/admin/api/2024-01/inventory_levels.json?inventory_item_ids=&variant_id=${variant_id}`,
+          { headers: { 'X-Shopify-Access-Token': apiKey } }
+        );
+        if (invRes.ok) {
+          const invData = await invRes.json();
+          // Sum available across all locations
+          inventoryAtSubscribed = (invData.inventory_levels || []).reduce((sum, iv) => sum + (iv.available || 0), 0);
+        }
+      }
+    } catch (err) {
+      console.warn(`[${new Date().toISOString()}] Could not fetch inventory for variant ${variant_id}: ${err.message}`);
+    }
+
     db.prepare(`
       INSERT INTO subscribers
-        (product_id, variant_id, product_title, variant_title, product_handle, channel, contact, store_domain, customer_location)
+        (product_id, variant_id, product_title, variant_title, product_handle, channel, contact, store_domain, customer_location, inventory_at_subscribed)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       String(product_id),
       String(variant_id),
@@ -68,6 +88,7 @@ router.post('/', (req, res) => {
       normalizedContact,
       store_domain,
       customerLocation,
+      inventoryAtSubscribed,
     );
 
     console.log(`[${new Date().toISOString()}] New subscriber: ${channel} ${normalizedContact} for variant ${variant_id} (${variant_title || product_title})`);
