@@ -111,7 +111,7 @@ async function resolveVariantFromInventoryItem(inventoryItemId) {
   const query = `{ inventoryItem(id: "${gid}") { variant { id } } }`;
 
   try {
-    const res = await fetch(`https://${domain}/admin/api/2024-01/graphql.json`, {
+    const res = await fetch(`https://${domain}/admin/api/2025-01/graphql.json`, {
       method:  'POST',
       headers: {
         'Content-Type':           'application/json',

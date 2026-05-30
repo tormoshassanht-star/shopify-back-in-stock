@@ -53,51 +53,50 @@ router.post('/', async (req, res) => {
     // Get customer location from Shopify/Cloudflare header
     const customerLocation = req.headers['cf-ipcountry'] || req.headers['x-country'] || 'LB';
 
-    // Fetch current inventory count for this variant via GraphQL
+    // Resolve variant title + inventory server-side (theme-independent)
     let inventoryAtSubscribed = 0;
+    let resolvedVariantTitle = variant_title;
     try {
       const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
       const domain = process.env.SHOPIFY_SHOP_DOMAIN;
       if (apiKey && domain) {
         const variantGid = `gid://shopify/ProductVariant/${variant_id}`;
-        const variantQuery = `{ productVariant(id: "${variantGid}") { inventoryItem { id } } }`;
-        const varRes = await fetch(
-          `https://${domain}/admin/api/2024-01/graphql.json`,
+        const query = `{
+          productVariant(id: "${variantGid}") {
+            title
+            inventoryItem {
+              inventoryLevels(first: 10) {
+                edges { node { quantities(names: ["available"]) { quantity } } }
+              }
+            }
+          }
+        }`;
+        const gqlRes = await fetch(
+          `https://${domain}/admin/api/2025-01/graphql.json`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'X-Shopify-Access-Token': apiKey,
             },
-            body: JSON.stringify({ query: variantQuery }),
+            body: JSON.stringify({ query }),
           }
         );
-        if (varRes.ok) {
-          const varData = await varRes.json();
-          const inventoryItemGid = varData?.data?.productVariant?.inventoryItem?.id;
-          if (inventoryItemGid) {
-            const invQuery = `{ inventoryItem(id: "${inventoryItemGid}") { inventoryLevels(first: 10) { edges { node { available } } } } }`;
-            const invRes = await fetch(
-              `https://${domain}/admin/api/2024-01/graphql.json`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Shopify-Access-Token': apiKey,
-                },
-                body: JSON.stringify({ query: invQuery }),
-              }
-            );
-            if (invRes.ok) {
-              const invData = await invRes.json();
-              const levels = invData?.data?.inventoryItem?.inventoryLevels?.edges || [];
-              inventoryAtSubscribed = levels.reduce((sum, edge) => sum + (edge.node.available || 0), 0);
-            }
+        if (gqlRes.ok) {
+          const gqlData = await gqlRes.json();
+          const v = gqlData?.data?.productVariant;
+          if (v) {
+            if (v.title && v.title !== 'Default Title') resolvedVariantTitle = v.title;
+            const levels = v.inventoryItem?.inventoryLevels?.edges || [];
+            inventoryAtSubscribed = levels.reduce((sum, edge) => {
+              const q = (edge.node.quantities || []).find(x => x.quantity != null);
+              return sum + (q ? q.quantity : 0);
+            }, 0);
           }
         }
       }
     } catch (err) {
-      console.warn(`[${new Date().toISOString()}] Could not fetch inventory for variant ${variant_id}: ${err.message}`);
+      console.warn(`[${new Date().toISOString()}] Could not fetch variant data for ${variant_id}: ${err.message}`);
     }
 
     db.prepare(`
@@ -109,7 +108,7 @@ router.post('/', async (req, res) => {
       String(product_id),
       String(variant_id),
       product_title,
-      variant_title,
+      resolvedVariantTitle,
       product_handle,
       channel,
       normalizedContact,
