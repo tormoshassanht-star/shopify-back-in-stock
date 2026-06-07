@@ -195,7 +195,7 @@
   var currentProductHandle = '';
   var currentStoreDomain   = window.Shopify && window.Shopify.shop
     ? window.Shopify.shop : window.location.hostname;
-  var selectedChannel = 'email';
+  var selectedChannel = 'whatsapp';
 
   // ─── DOM ──────────────────────────────────────────────────────────────────
   function injectStyles() {
@@ -218,10 +218,9 @@
         <div id="bis-inner">
           <span class="bis-label">How would you like to be notified?</span>
           <div class="bis-channels">
-            <button class="bis-ch" data-channel="email" type="button">✉ Email</button>
             <button class="bis-ch" data-channel="whatsapp" type="button">💬 WhatsApp</button>
           </div>
-          <input id="bis-input" type="email" placeholder="your@email.com" autocomplete="email" />
+          <input id="bis-input" type="tel" placeholder="+961 71 000 000" autocomplete="tel" />
           <button id="bis-submit" type="button">
             <span class="bis-btn-text">Notify Me</span>
             <div class="bis-spinner"></div>
@@ -474,7 +473,7 @@
     document.querySelectorAll('.bis-ch').forEach(function (b) {
       b.addEventListener('click', function () { setChannel(b.dataset.channel); });
     });
-    setChannel('email');
+    setChannel('whatsapp');
 
     // Toggle panel
     document.getElementById('bis-trigger').addEventListener('click', function () {
