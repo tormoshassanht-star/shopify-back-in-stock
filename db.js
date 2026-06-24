@@ -56,5 +56,8 @@ if (!existingCols.includes('customer_location')) {
 if (!existingCols.includes('webhook_triggered')) {
   db.exec('ALTER TABLE subscribers ADD COLUMN webhook_triggered INTEGER DEFAULT 0');
 }
+if (!existingCols.includes('sku')) {
+  db.exec('ALTER TABLE subscribers ADD COLUMN sku TEXT');
+}
 
 module.exports = db;

@@ -210,6 +210,7 @@
             <th data-col="id" onclick="sortBy('id')"># <span class="sort-icon">▼</span></th>
             <th data-col="product_title" onclick="sortBy('product_title')">Product <span class="sort-icon">↕</span></th>
             <th data-col="variant_title" onclick="sortBy('variant_title')">Variant <span class="sort-icon">↕</span></th>
+            <th data-col="sku" onclick="sortBy('sku')">SKU <span class="sort-icon">↕</span></th>
             <th data-col="channel" onclick="sortBy('channel')">Channel <span class="sort-icon">↕</span></th>
             <th data-col="contact" onclick="sortBy('contact')">Contact <span class="sort-icon">↕</span></th>
             <th data-col="customer_location" onclick="sortBy('customer_location')">Location <span class="sort-icon">↕</span></th>
@@ -439,6 +440,7 @@
         <td style="color:var(--muted);font-size:12px">#${r.id}</td>
         <td class="trunc" title="${esc(r.product_title||'')}">${esc(r.product_title||'—')}</td>
         <td style="color:var(--muted);font-size:12px">${vtitle}</td>
+        <td style="font-family:monospace;font-size:12px">${esc(r.sku||'—')}</td>
         <td>${chBadge}</td>
         <td style="font-family:monospace;font-size:12px">${esc(r.contact)}</td>
         <td style="font-weight:600;font-size:12px">${esc(r.customer_location||'—')}</td>
@@ -522,9 +524,9 @@
   // ── CSV EXPORT ────────────────────────────────────────────────────────────
   function exportCSV() {
     const src = filteredRows.length > 0 ? filteredRows : allRows;
-    const headers = ['ID','Product','Variant','Channel','Contact','Status','Subscribed','Error'];
+    const headers = ['ID','Product','Variant','SKU','Channel','Contact','Status','Subscribed','Error'];
     const rows = src.map(r => [
-      r.id, r.product_title||'', r.variant_title||'', r.channel, r.contact,
+      r.id, r.product_title||'', r.variant_title||'', r.sku||'', r.channel, r.contact,
       r.notified ? 'notified' : 'pending', r.created_at||'', r.notify_error||''
     ]);
     const csv = [headers, ...rows].map(row =>

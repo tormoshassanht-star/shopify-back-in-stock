@@ -56,6 +56,7 @@ router.post('/', async (req, res) => {
     // Resolve variant title + inventory server-side (theme-independent)
     let inventoryAtSubscribed = 0;
     let resolvedVariantTitle = variant_title;
+    let resolvedSku = '';
     try {
       const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
       const domain = process.env.SHOPIFY_SHOP_DOMAIN;
@@ -64,6 +65,7 @@ router.post('/', async (req, res) => {
         const query = `{
           productVariant(id: "${variantGid}") {
             title
+            sku
             inventoryItem {
               inventoryLevels(first: 10) {
                 edges { node { quantities(names: ["available"]) { quantity } } }
@@ -87,6 +89,7 @@ router.post('/', async (req, res) => {
           const v = gqlData?.data?.productVariant;
           if (v) {
             if (v.title && v.title !== 'Default Title') resolvedVariantTitle = v.title;
+            if (v.sku) resolvedSku = v.sku;
             const levels = v.inventoryItem?.inventoryLevels?.edges || [];
             inventoryAtSubscribed = levels.reduce((sum, edge) => {
               const q = (edge.node.quantities || []).find(x => x.quantity != null);
@@ -101,14 +104,15 @@ router.post('/', async (req, res) => {
 
     db.prepare(`
       INSERT INTO subscribers
-        (product_id, variant_id, product_title, variant_title, product_handle, channel, contact, store_domain, customer_location, inventory_at_subscribed)
+        (product_id, variant_id, product_title, variant_title, sku, product_handle, channel, contact, store_domain, customer_location, inventory_at_subscribed)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       String(product_id),
       String(variant_id),
       product_title,
       resolvedVariantTitle,
+      resolvedSku,
       product_handle,
       channel,
       normalizedContact,

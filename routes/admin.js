@@ -3,12 +3,13 @@ const router  = express.Router();
 const db      = require('../db');
 const notify  = require('../services/notify');
 
-async function fetchVariantAvailable(variantId) {
+async function fetchVariantData(variantId) {
   const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
   const domain = process.env.SHOPIFY_SHOP_DOMAIN;
   if (!apiKey || !domain) return null;
   const query = `{
     productVariant(id: "gid://shopify/ProductVariant/${variantId}") {
+      sku
       inventoryItem {
         inventoryLevels(first: 10) {
           edges { node { quantities(names: ["available"]) { quantity } } }
@@ -23,11 +24,14 @@ async function fetchVariantAvailable(variantId) {
   });
   if (!res.ok) return null;
   const data = await res.json();
-  const levels = data?.data?.productVariant?.inventoryItem?.inventoryLevels?.edges || [];
-  return levels.reduce((sum, edge) => {
+  const v = data?.data?.productVariant;
+  if (!v) return null;
+  const levels = v.inventoryItem?.inventoryLevels?.edges || [];
+  const available = levels.reduce((sum, edge) => {
     const q = (edge.node.quantities || []).find(x => x.quantity != null);
     return sum + (q ? q.quantity : 0);
   }, 0);
+  return { available, sku: v.sku || '' };
 }
 
 function requireAdminKey(req, res, next) {
@@ -149,9 +153,13 @@ router.post('/subscribers/:id/resync', async (req, res) => {
     const sub = db.prepare('SELECT * FROM subscribers WHERE id = ?').get(req.params.id);
     if (!sub) return res.status(404).json({ error: 'Not found' });
 
-    const available = await fetchVariantAvailable(sub.variant_id);
-    if (available === null) {
+    const vd = await fetchVariantData(sub.variant_id);
+    if (vd === null) {
       return res.status(502).json({ error: 'Could not check Shopify inventory' });
+    }
+    const { available, sku } = vd;
+    if (sku && sku !== sub.sku) {
+      db.prepare('UPDATE subscribers SET sku = ? WHERE id = ?').run(sku, sub.id);
     }
     if (available <= 0) {
       return res.json({ success: false, available, message: 'Still out of stock — nothing sent' });
