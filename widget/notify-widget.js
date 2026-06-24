@@ -220,7 +220,7 @@
           <div class="bis-channels">
             <button class="bis-ch" data-channel="whatsapp" type="button">💬 WhatsApp</button>
           </div>
-          <input id="bis-input" type="tel" placeholder="+961 71 000 000" autocomplete="tel" />
+          <input id="bis-input" type="tel" placeholder="+961 71 000 000" autocomplete="tel" value="+961 " />
           <button id="bis-submit" type="button">
             <span class="bis-btn-text">Notify Me</span>
             <div class="bis-spinner"></div>
@@ -240,11 +240,12 @@
     });
     var inp = document.getElementById('bis-input');
     if (ch === 'whatsapp') {
-      inp.type = 'tel'; inp.placeholder = '+1 555 000 0000'; inp.autocomplete = 'tel';
+      inp.type = 'tel'; inp.placeholder = '+961 71 000 000'; inp.autocomplete = 'tel';
+      inp.value = '+961 ';
     } else {
       inp.type = 'email'; inp.placeholder = 'your@email.com'; inp.autocomplete = 'email';
+      inp.value = '';
     }
-    inp.value = '';
     hideMsg();
   }
 
