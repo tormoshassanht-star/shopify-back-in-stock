@@ -147,6 +147,7 @@
     <div class="topbar-right">
       <span class="refresh-ts" id="refresh-ts"></span>
       <button class="btn btn-ghost btn-sm" onclick="loadData()">↻ Refresh</button>
+      <button class="btn btn-ghost btn-sm" id="sync-qty-btn" onclick="syncQty()">⟳ Sync Qty</button>
       <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
       <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()">☀</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
@@ -535,6 +536,26 @@
     ));
     selected.clear(); updateBulkPopup();
     await loadData();
+  }
+
+  async function syncQty() {
+    const btn = document.getElementById('sync-qty-btn');
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = '⟳ Syncing…';
+    try {
+      const res = await fetch(`${BASE}/admin/refresh-inventory`, { method:'POST', headers:{'x-admin-key':apiKey} });
+      const data = await res.json();
+      if (data.success) {
+        await loadData();
+        alert(`Synced Beirut inventory for ${data.updated}/${data.variants} variants.`);
+      } else {
+        alert(data.error || 'Sync failed');
+      }
+    } catch (e) {
+      alert('Sync failed: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
+    }
   }
 
   // ── CSV EXPORT ────────────────────────────────────────────────────────────

@@ -147,6 +147,25 @@ router.patch('/subscribers/:id/reset', (req, res) => {
   }
 });
 
+// POST /admin/refresh-inventory — refresh live Beirut Qty + SKU for all rows (no sending)
+router.post('/refresh-inventory', async (req, res) => {
+  try {
+    const variantIds = db.prepare('SELECT DISTINCT variant_id FROM subscribers').all().map(r => r.variant_id);
+    let updated = 0;
+    for (const variantId of variantIds) {
+      const vd = await fetchVariantData(variantId);
+      if (vd === null) continue;
+      const { available, sku } = vd;
+      db.prepare('UPDATE subscribers SET inventory_at_subscribed = ? WHERE variant_id = ?').run(available, variantId);
+      if (sku) db.prepare('UPDATE subscribers SET sku = ? WHERE variant_id = ?').run(sku, variantId);
+      updated++;
+    }
+    res.json({ success: true, variants: variantIds.length, updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /admin/subscribers/:id/resync — check live stock, send if available
 router.post('/subscribers/:id/resync', async (req, res) => {
   try {
