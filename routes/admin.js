@@ -158,6 +158,7 @@ router.post('/subscribers/:id/resync', async (req, res) => {
       return res.status(502).json({ error: 'Could not check Shopify inventory' });
     }
     const { available, sku } = vd;
+    db.prepare('UPDATE subscribers SET inventory_at_subscribed = ? WHERE id = ?').run(available, sub.id);
     if (sku && sku !== sub.sku) {
       db.prepare('UPDATE subscribers SET sku = ? WHERE id = ?').run(sku, sub.id);
     }
