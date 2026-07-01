@@ -7,12 +7,13 @@ async function fetchVariantData(variantId) {
   const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
   const domain = process.env.SHOPIFY_SHOP_DOMAIN;
   if (!apiKey || !domain) return null;
+  const beirutId = process.env.BEIRUT_LOCATION_ID || '74671718702';
   const query = `{
     productVariant(id: "gid://shopify/ProductVariant/${variantId}") {
       sku
       inventoryItem {
         inventoryLevels(first: 10) {
-          edges { node { quantities(names: ["available"]) { quantity } } }
+          edges { node { location { id } quantities(names: ["available"]) { quantity } } }
         }
       }
     }
@@ -27,10 +28,9 @@ async function fetchVariantData(variantId) {
   const v = data?.data?.productVariant;
   if (!v) return null;
   const levels = v.inventoryItem?.inventoryLevels?.edges || [];
-  const available = levels.reduce((sum, edge) => {
-    const q = (edge.node.quantities || []).find(x => x.quantity != null);
-    return sum + (q ? q.quantity : 0);
-  }, 0);
+  const beirut = levels.find(e => String(e.node.location?.id || '').endsWith(`/${beirutId}`));
+  const q = beirut && (beirut.node.quantities || []).find(x => x.quantity != null);
+  const available = q ? q.quantity : 0;
   return { available, sku: v.sku || '' };
 }
 

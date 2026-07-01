@@ -61,6 +61,7 @@ router.post('/', async (req, res) => {
       const apiKey = process.env.SHOPIFY_ADMIN_API_KEY;
       const domain = process.env.SHOPIFY_SHOP_DOMAIN;
       if (apiKey && domain) {
+        const beirutId = process.env.BEIRUT_LOCATION_ID || '74671718702';
         const variantGid = `gid://shopify/ProductVariant/${variant_id}`;
         const query = `{
           productVariant(id: "${variantGid}") {
@@ -68,7 +69,7 @@ router.post('/', async (req, res) => {
             sku
             inventoryItem {
               inventoryLevels(first: 10) {
-                edges { node { quantities(names: ["available"]) { quantity } } }
+                edges { node { location { id } quantities(names: ["available"]) { quantity } } }
               }
             }
           }
@@ -91,10 +92,9 @@ router.post('/', async (req, res) => {
             if (v.title && v.title !== 'Default Title') resolvedVariantTitle = v.title;
             if (v.sku) resolvedSku = v.sku;
             const levels = v.inventoryItem?.inventoryLevels?.edges || [];
-            inventoryAtSubscribed = levels.reduce((sum, edge) => {
-              const q = (edge.node.quantities || []).find(x => x.quantity != null);
-              return sum + (q ? q.quantity : 0);
-            }, 0);
+            const beirut = levels.find(e => String(e.node.location?.id || '').endsWith(`/${beirutId}`));
+            const q = beirut && (beirut.node.quantities || []).find(x => x.quantity != null);
+            inventoryAtSubscribed = q ? q.quantity : 0;
           }
         }
       }
